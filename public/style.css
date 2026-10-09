@@ -1,0 +1,94 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #080d18;
+  color: #f3f4f6;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 15% 0%, #17213a 0%, #080d18 46%);
+}
+button, select { font: inherit; }
+.topbar, main, footer { width: min(1120px, calc(100% - 32px)); margin-inline: auto; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 28px 0 20px; flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 13px; }
+.brand-mark, .hero-icon {
+  display: grid; place-items: center; background: #ef4444; color: white;
+  border-radius: 15px; width: 48px; height: 48px; font-size: 22px; font-weight: 900;
+}
+.eyebrow { margin: 0 0 5px; color: #93c5fd; font-size: 10px; font-weight: 800; letter-spacing: 1.7px; }
+h1 { margin: 0; font-size: clamp(22px, 4vw, 30px); letter-spacing: -.7px; }
+h2 { margin: 0; font-size: 19px; letter-spacing: -.3px; }
+.status { border: 1px solid #344057; border-radius: 999px; padding: 8px 12px; color: #cbd5e1; font-size: 12px; background: #111827; }
+main { padding-bottom: 30px; }
+.panel { border: 1px solid #26334a; background: rgba(17, 25, 42, .94); border-radius: 20px; padding: 22px; margin: 14px 0; min-width: 0; box-shadow: 0 12px 32px #00000012; }
+.connect-panel { text-align: center; padding: 42px 24px; }
+.connect-panel .hero-icon { margin: 0 auto 18px; }
+.connect-panel p { max-width: 540px; margin: 12px auto 20px; line-height: 1.7; }
+.muted { color: #9ca9bd; line-height: 1.6; }
+.tiny { font-size: 11px; line-height: 1.6; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; border: 0; border-radius: 11px; padding: 10px 15px; font-size: 13px; font-weight: 750; cursor: pointer; text-decoration: none; transition: transform .12s ease, opacity .12s ease; }
+.button:active { transform: scale(.98); }
+.button:disabled { opacity: .55; cursor: wait; }
+.primary { background: #60a5fa; color: #081225; }
+.secondary { background: #26344b; color: #e5edf8; border: 1px solid #34445e; }
+.danger { background: #3b2028; color: #fecaca; border: 1px solid #66323b; }
+.hidden { display: none !important; }
+.channel-head { display: flex; align-items: center; gap: 15px; }
+.channel-thumb { width: 66px; height: 66px; border-radius: 50%; object-fit: cover; background: #26344b; }
+.channel-copy { min-width: 0; overflow-wrap: anywhere; }
+.channel-copy h2 { margin-bottom: 4px; }
+.channel-copy p { margin: 3px 0; font-size: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.stat-card { padding: 18px; background: #11192a; border: 1px solid #26334a; border-radius: 16px; min-width: 0; }
+.stat-label, .stat-foot { display: block; color: #9ca9bd; font-size: 11px; line-height: 1.5; }
+.stat-card strong { display: block; margin: 9px 0 7px; font-size: clamp(22px, 3vw, 31px); overflow-wrap: anywhere; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.section-heading h2 { margin-bottom: 5px; }
+.section-heading .muted { margin: 0; font-size: 12px; }
+.select-label { color: #aebbd0; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+select { color: #f3f4f6; background: #0b1220; border: 1px solid #34445e; border-radius: 10px; padding: 10px; min-height: 40px; }
+.metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.metric { background: #0b1220; border: 1px solid #202d42; padding: 15px; border-radius: 13px; min-width: 0; }
+.metric span, .metric small { display: block; color: #9ca9bd; font-size: 11px; }
+.metric strong { display: inline-block; font-size: 23px; margin: 7px 5px 4px 0; overflow-wrap: anywhere; }
+.table-wrap { width: 100%; overflow-x: auto; margin-top: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+th, td { padding: 12px 10px; border-bottom: 1px solid #27334a; text-align: right; }
+th { color: #9ca9bd; font-weight: 650; }
+th:first-child, td:first-child { text-align: left; }
+.video-list { display: grid; gap: 12px; }
+.video-card { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 15px; border: 1px solid #27334a; background: #0b1220; border-radius: 14px; padding: 12px; min-width: 0; }
+.video-thumb { width: 100%; aspect-ratio: 16/9; border-radius: 9px; object-fit: cover; background: #1f2937; }
+.video-title { display: inline-block; color: #eaf2ff; text-decoration: none; font-size: 14px; font-weight: 750; line-height: 1.5; margin: 1px 0 9px; }
+.video-title:hover { text-decoration: underline; }
+.video-metrics { display: flex; flex-wrap: wrap; gap: 7px; }
+.video-metrics span { background: #182338; color: #bdc9db; border-radius: 8px; padding: 7px 9px; font-size: 11px; }
+.error-banner { background: #421f2b; border: 1px solid #773748; border-radius: 12px; padding: 14px; color: #fecdd3; margin: 14px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+footer { display: flex; justify-content: space-between; gap: 12px; color: #68758a; font-size: 11px; padding: 12px 0 30px; }
+@media (max-width: 760px) {
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .topbar, main, footer { width: calc(100% - 22px); }
+  .topbar { padding-top: 18px; align-items: flex-start; }
+  .panel { padding: 16px; border-radius: 16px; }
+  .connect-panel { padding: 32px 17px; }
+  .stats-grid { gap: 8px; }
+  .stat-card { padding: 13px; }
+  .stat-card strong { font-size: 23px; }
+  .channel-thumb { width: 52px; height: 52px; }
+  .video-card { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; padding: 9px; }
+  .video-title { font-size: 12px; }
+  .video-metrics { gap: 5px; }
+  .video-metrics span { font-size: 10px; padding: 6px; }
+  footer { flex-direction: column; }
+}

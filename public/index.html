@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="YouTube Analytics dashboard for creators">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <title>Mobile Studio AI</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">▶</div>
+      <div>
+        <p class="eyebrow">CREATOR WORKSPACE</p>
+        <h1>Mobile Studio AI</h1>
+      </div>
+    </div>
+    <div id="status" class="status" role="status">กำลังตรวจสอบ...</div>
+  </header>
+
+  <main>
+    <section id="connectPanel" class="panel connect-panel">
+      <div class="hero-icon">▶</div>
+      <h2>เชื่อมต่อช่อง YouTube ของคุณ</h2>
+      <p class="muted">อ่านข้อมูลช่องและรายงาน Analytics ผ่าน Google OAuth คุณเป็นผู้อนุญาตการเข้าถึงเอง</p>
+      <a class="button primary" href="/auth/google">Connect YouTube</a>
+      <p class="tiny muted">แอปนี้เป็นโปรเจกต์อิสระ ไม่ใช่ผลิตภัณฑ์อย่างเป็นทางการของ YouTube</p>
+    </section>
+
+    <div id="dashboard" class="hidden">
+      <section class="panel channel-panel">
+        <div class="channel-head">
+          <img id="channelThumbnail" class="channel-thumb" alt="รูปช่อง YouTube">
+          <div class="channel-copy">
+            <p class="eyebrow">CONNECTED CHANNEL</p>
+            <h2 id="channelName">—</h2>
+            <p id="channelDescription" class="muted"></p>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="refreshAll" class="button secondary">↻ Refresh data</button>
+          <button id="disconnect" class="button danger">Disconnect</button>
+        </div>
+      </section>
+
+      <section class="stats-grid">
+        <article class="stat-card">
+          <span class="stat-label">ยอดดูทั้งหมดของช่อง</span>
+          <strong id="totalViews">—</strong>
+          <span class="stat-foot">สถิติสะสมจาก YouTube</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">ผู้ติดตาม</span>
+          <strong id="subscribers">—</strong>
+          <span class="stat-foot">อาจถูกซ่อนโดยเจ้าของช่อง</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">วิดีโอทั้งหมด</span>
+          <strong id="videoCount">—</strong>
+          <span class="stat-foot">ข้อมูลช่อง</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">ยอดดูในช่วงที่เลือก</span>
+          <strong id="periodViews">—</strong>
+          <span id="periodDates" class="stat-foot">—</span>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">CHANNEL REPORT</p>
+            <h2>ภาพรวม Analytics</h2>
+          </div>
+          <label class="select-label" for="days">ช่วงเวลา
+            <select id="days">
+              <option value="7">7 วัน</option>
+              <option value="28" selected>28 วัน</option>
+              <option value="90">90 วัน</option>
+            </select>
+          </label>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><span>เวลาในการรับชม</span><strong id="watchMinutes">—</strong><small>นาที</small></div>
+          <div class="metric"><span>ถูกใจ</span><strong id="likes">—</strong></div>
+          <div class="metric"><span>ความคิดเห็น</span><strong id="comments">—</strong></div>
+          <div class="metric"><span>แชร์</span><strong id="shares">—</strong></div>
+          <div class="metric"><span>ผู้ติดตามที่ได้</span><strong id="gained">—</strong></div>
+          <div class="metric"><span>ผู้ติดตามที่เสีย</span><strong id="lost">—</strong></div>
+        </div>
+        <p id="analyticsNote" class="tiny muted">ข้อมูล Analytics อาจล่าช้ากว่าวันปัจจุบัน</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>วันที่</th><th>ยอดดู</th><th>นาทีรับชม</th><th>ถูกใจ</th><th>ผู้ติดตามสุทธิ*</th></tr></thead>
+            <tbody id="dailyRows"><tr><td colspan="5" class="muted">ยังไม่มีข้อมูล</td></tr></tbody>
+          </table>
+        </div>
+        <p class="tiny muted">*คำนวณจากผู้ติดตามที่ได้ลบผู้ติดตามที่เสีย โดยใช้ข้อมูลที่ API ส่งกลับ</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">TOP CONTENT</p>
+            <h2>วิดีโอที่มีผลงานสูงสุด</h2>
+            <p id="videoDates" class="muted"></p>
+          </div>
+          <button id="loadVideos" class="button secondary">Load videos</button>
+        </div>
+        <div id="videoList" class="video-list">
+          <p class="muted">กำลังโหลดวิดีโอ...</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="globalError" class="error-banner hidden" role="alert"></div>
+  </main>
+
+  <footer>
+    <span>Mobile Studio AI</span>
+    <span>Local development · YouTube API</span>
+  </footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>

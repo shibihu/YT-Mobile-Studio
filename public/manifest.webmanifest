@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Mobile Studio AI",
+  "short_name": "Studio AI",
+  "description": "A mobile-friendly YouTube Analytics dashboard",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080d18",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
