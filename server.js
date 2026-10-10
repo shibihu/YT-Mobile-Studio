@@ -5,6 +5,7 @@ import { google } from "googleapis";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { coachEngine, compareHealthSnapshots, analyzeWorkingPatterns } from "./coach.js";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -180,6 +181,17 @@ function dateRange(daysInput) {
   return { startDate: fmt(start), endDate: fmt(end), days };
 }
 
+function previousDateRange(daysInput) {
+  const days = Math.min(90, Math.max(7, Number.parseInt(daysInput, 10) || 28));
+  const currentRange = dateRange(days);
+  const end = new Date(currentRange.startDate);
+  end.setUTCDate(end.getUTCDate() - 1);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - days + 1);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { startDate: fmt(start), endDate: fmt(end), days };
+}
+
 function publicError(err) {
   if (err?.code === "NOT_CONNECTED") return [401, err.message];
   const status = err?.response?.status;
@@ -235,6 +247,27 @@ async function getChannelReport(auth, days) {
   return { ...range, headers, rows, totals, note: "YouTube Analytics data can be delayed; recent days may be incomplete." };
 }
 
+async function getPreviousChannelReport(auth, days) {
+  const range = previousDateRange(days);
+  const ytAnalytics = google.youtubeAnalytics({ version: "v2", auth });
+  const response = await ytAnalytics.reports.query({
+    ids: "channel==MINE",
+    startDate: range.startDate,
+    endDate: range.endDate,
+    dimensions: "day",
+    sort: "day",
+    metrics: "views,estimatedMinutesWatched,likes,comments,shares,subscribersGained,subscribersLost"
+  });
+  const headers = (response.data.columnHeaders ?? []).map(h => h.name);
+  const totals = {};
+  for (const metric of ["views", "estimatedMinutesWatched", "likes", "comments", "shares", "subscribersGained", "subscribersLost"]) {
+    const idx = headers.indexOf(metric);
+    if (idx >= 0) totals[metric] = (response.data.rows ?? []).reduce((sum, row) => sum + Number(row[idx] ?? 0), 0);
+    else totals[metric] = 0;
+  }
+  return { ...range, totals };
+}
+
 async function getVideoReport(auth, days) {
   const range = dateRange(days);
   const analytics = google.youtubeAnalytics({ version: "v2", auth });
@@ -275,6 +308,18 @@ async function getVideoReport(auth, days) {
     headers,
     rows: rows.map(row => ({ ...row, ...(metadata[row.video] ?? { title: row.video, thumbnail: null, url: null }) }))
   };
+}
+
+const lastAiRequest = new Map();
+function checkAiRateLimit(req, res, next) {
+  const sid = req.sessionID || "anon";
+  const now = Date.now();
+  const last = lastAiRequest.get(sid) || 0;
+  if (now - last < 2000) {
+    return res.status(429).json({ error: "Please wait a moment before sending another AI request." });
+  }
+  lastAiRequest.set(sid, now);
+  next();
 }
 
 app.get("/auth/google", (req, res) => {
@@ -379,6 +424,167 @@ app.get("/api/videos", async (req, res) => {
   } catch (err) {
     if (err?.response) console.error("Video API error:", err.response.data ?? err.message);
     else console.error("Video report error:", err.message);
+    const [status, message] = publicError(err);
+    res.status(status).json({ error: message });
+  }
+});
+
+// AI Content Coach Endpoints
+
+app.get("/api/coach/snapshot", async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const days = req.query.days;
+
+    const [channel, currentReport, previousReport, videoReport] = await Promise.all([
+      getChannel(auth),
+      getChannelReport(auth, days),
+      getPreviousChannelReport(auth, days),
+      getVideoReport(auth, days)
+    ]);
+
+    const healthSnapshot = compareHealthSnapshots(
+      currentReport.totals,
+      previousReport.totals,
+      { startDate: currentReport.startDate, endDate: currentReport.endDate, days: currentReport.days },
+      { startDate: previousReport.startDate, endDate: previousReport.endDate, days: previousReport.days }
+    );
+
+    const workingPatterns = analyzeWorkingPatterns(videoReport.rows, currentReport.totals);
+
+    const [ideasResult, improvements] = await Promise.all([
+      coachEngine.generateContentIdeas(channel, healthSnapshot, workingPatterns, videoReport.rows),
+      coachEngine.generateVideoImprovements(channel, healthSnapshot, workingPatterns, videoReport.rows)
+    ]);
+
+    const savedIdeas = coachEngine.getSavedIdeas(channel.id);
+
+    res.json({
+      channel,
+      healthSnapshot,
+      workingPatterns,
+      contentIdeas: ideasResult.ideas,
+      improvements,
+      savedIdeas,
+      provider: ideasResult.provider,
+      providerNote: ideasResult.note || null,
+      aiConfigured: coachEngine.isConfigured()
+    });
+  } catch (err) {
+    if (err?.response) console.error("Coach snapshot API error:", err.response.data ?? err.message);
+    else console.error("Coach snapshot error:", err.message);
+    const [status, message] = publicError(err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.post("/api/coach/ideas/generate", checkAiRateLimit, async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const days = req.body?.days;
+
+    const [channel, currentReport, previousReport, videoReport] = await Promise.all([
+      getChannel(auth),
+      getChannelReport(auth, days),
+      getPreviousChannelReport(auth, days),
+      getVideoReport(auth, days)
+    ]);
+
+    const healthSnapshot = compareHealthSnapshots(
+      currentReport.totals,
+      previousReport.totals,
+      { startDate: currentReport.startDate, endDate: currentReport.endDate, days: currentReport.days },
+      { startDate: previousReport.startDate, endDate: previousReport.endDate, days: previousReport.days }
+    );
+
+    const workingPatterns = analyzeWorkingPatterns(videoReport.rows, currentReport.totals);
+    const ideasResult = await coachEngine.generateContentIdeas(channel, healthSnapshot, workingPatterns, videoReport.rows);
+
+    res.json({
+      contentIdeas: ideasResult.ideas,
+      provider: ideasResult.provider,
+      providerNote: ideasResult.note || null
+    });
+  } catch (err) {
+    if (err?.response) console.error("Coach generate ideas API error:", err.response.data ?? err.message);
+    else console.error("Coach generate ideas error:", err.message);
+    const [status, message] = publicError(err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.post("/api/coach/ask", checkAiRateLimit, async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const question = req.body?.question;
+    const days = req.body?.days;
+
+    if (!question || typeof question !== "string" || !question.trim()) {
+      return res.status(400).json({ error: "Please enter a valid question." });
+    }
+
+    const [channel, currentReport, previousReport, videoReport] = await Promise.all([
+      getChannel(auth),
+      getChannelReport(auth, days),
+      getPreviousChannelReport(auth, days),
+      getVideoReport(auth, days)
+    ]);
+
+    const healthSnapshot = compareHealthSnapshots(
+      currentReport.totals,
+      previousReport.totals,
+      { startDate: currentReport.startDate, endDate: currentReport.endDate, days: currentReport.days },
+      { startDate: previousReport.startDate, endDate: previousReport.endDate, days: previousReport.days }
+    );
+
+    const workingPatterns = analyzeWorkingPatterns(videoReport.rows, currentReport.totals);
+    const response = await coachEngine.answerQuestion(question, channel, healthSnapshot, workingPatterns, videoReport.rows);
+
+    res.json(response);
+  } catch (err) {
+    if (err?.response) console.error("Coach Q&A API error:", err.response.data ?? err.message);
+    else console.error("Coach Q&A error:", err.message);
+    const [status, message] = publicError(err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.get("/api/coach/saved", async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const channel = await getChannel(auth);
+    const saved = coachEngine.getSavedIdeas(channel.id);
+    res.json({ savedIdeas: saved });
+  } catch (err) {
+    const [status, message] = publicError(err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.post("/api/coach/saved", async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const channel = await getChannel(auth);
+    const idea = req.body?.idea;
+    if (!idea) return res.status(400).json({ error: "Missing idea to save." });
+
+    const savedItem = coachEngine.saveIdea(channel.id, idea);
+    res.json({ ok: true, savedItem });
+  } catch (err) {
+    const [status, message] = publicError(err);
+    res.status(status).json({ error: message });
+  }
+});
+
+app.delete("/api/coach/saved/:id", async (req, res) => {
+  try {
+    const auth = getAuth(req);
+    const channel = await getChannel(auth);
+    const ideaId = req.params.id;
+
+    coachEngine.deleteSavedIdea(channel.id, ideaId);
+    res.json({ ok: true });
+  } catch (err) {
     const [status, message] = publicError(err);
     res.status(status).json({ error: message });
   }

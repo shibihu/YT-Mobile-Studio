@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b1020">
-  <meta name="description" content="YouTube Analytics dashboard for creators">
+  <meta name="description" content="YouTube Analytics & AI Content Coach dashboard for creators">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
@@ -19,22 +19,22 @@
         <h1>Mobile Studio AI</h1>
       </div>
     </div>
-    <div id="status" class="status" role="status">กำลังตรวจสอบ...</div>
+    <div id="status" class="status" role="status">Checking connection...</div>
   </header>
 
   <main>
     <section id="connectPanel" class="panel connect-panel">
       <div class="hero-icon">▶</div>
-      <h2>เชื่อมต่อช่อง YouTube ของคุณ</h2>
-      <p class="muted">อ่านข้อมูลช่องและรายงาน Analytics ผ่าน Google OAuth คุณเป็นผู้อนุญาตการเข้าถึงเอง</p>
+      <h2>Connect Your YouTube Channel</h2>
+      <p class="muted">Authorize access via Google OAuth to view your channel stats, Analytics reports, and personalized AI Content Coaching.</p>
       <a class="button primary" href="/auth/google">Connect YouTube</a>
-      <p class="tiny muted">แอปนี้เป็นโปรเจกต์อิสระ ไม่ใช่ผลิตภัณฑ์อย่างเป็นทางการของ YouTube</p>
+      <p class="tiny muted">This app is an independent local tool, not an official YouTube product.</p>
     </section>
 
     <div id="dashboard" class="hidden">
       <section class="panel channel-panel">
         <div class="channel-head">
-          <img id="channelThumbnail" class="channel-thumb" alt="รูปช่อง YouTube">
+          <img id="channelThumbnail" class="channel-thumb" alt="YouTube Channel Thumbnail">
           <div class="channel-copy">
             <p class="eyebrow">CONNECTED CHANNEL</p>
             <h2 id="channelName">—</h2>
@@ -42,79 +42,222 @@
           </div>
         </div>
         <div class="actions">
-          <button id="refreshAll" class="button secondary">↻ Refresh data</button>
+          <button id="refreshAll" class="button secondary">↻ Refresh Data</button>
           <button id="disconnect" class="button danger">Disconnect</button>
         </div>
       </section>
 
-      <section class="stats-grid">
-        <article class="stat-card">
-          <span class="stat-label">ยอดดูทั้งหมดของช่อง</span>
-          <strong id="totalViews">—</strong>
-          <span class="stat-foot">สถิติสะสมจาก YouTube</span>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">ผู้ติดตาม</span>
-          <strong id="subscribers">—</strong>
-          <span class="stat-foot">อาจถูกซ่อนโดยเจ้าของช่อง</span>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">วิดีโอทั้งหมด</span>
-          <strong id="videoCount">—</strong>
-          <span class="stat-foot">ข้อมูลช่อง</span>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">ยอดดูในช่วงที่เลือก</span>
-          <strong id="periodViews">—</strong>
-          <span id="periodDates" class="stat-foot">—</span>
-        </article>
-      </section>
+      <!-- Navigation Tabs -->
+      <nav class="tab-bar" aria-label="Dashboard Views">
+        <button id="tabDashboard" class="tab-button active" type="button">📊 Analytics</button>
+        <button id="tabCoach" class="tab-button" type="button">💡 AI Content Coach</button>
+        <button id="tabSaved" class="tab-button" type="button">📌 Saved Ideas (<span id="savedCount">0</span>)</button>
+      </nav>
 
-      <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">CHANNEL REPORT</p>
-            <h2>ภาพรวม Analytics</h2>
-          </div>
-          <label class="select-label" for="days">ช่วงเวลา
-            <select id="days">
-              <option value="7">7 วัน</option>
-              <option value="28" selected>28 วัน</option>
-              <option value="90">90 วัน</option>
-            </select>
-          </label>
-        </div>
-        <div class="metric-grid">
-          <div class="metric"><span>เวลาในการรับชม</span><strong id="watchMinutes">—</strong><small>นาที</small></div>
-          <div class="metric"><span>ถูกใจ</span><strong id="likes">—</strong></div>
-          <div class="metric"><span>ความคิดเห็น</span><strong id="comments">—</strong></div>
-          <div class="metric"><span>แชร์</span><strong id="shares">—</strong></div>
-          <div class="metric"><span>ผู้ติดตามที่ได้</span><strong id="gained">—</strong></div>
-          <div class="metric"><span>ผู้ติดตามที่เสีย</span><strong id="lost">—</strong></div>
-        </div>
-        <p id="analyticsNote" class="tiny muted">ข้อมูล Analytics อาจล่าช้ากว่าวันปัจจุบัน</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>วันที่</th><th>ยอดดู</th><th>นาทีรับชม</th><th>ถูกใจ</th><th>ผู้ติดตามสุทธิ*</th></tr></thead>
-            <tbody id="dailyRows"><tr><td colspan="5" class="muted">ยังไม่มีข้อมูล</td></tr></tbody>
-          </table>
-        </div>
-        <p class="tiny muted">*คำนวณจากผู้ติดตามที่ได้ลบผู้ติดตามที่เสีย โดยใช้ข้อมูลที่ API ส่งกลับ</p>
-      </section>
+      <!-- View 1: Analytics Dashboard -->
+      <div id="viewDashboard" class="tab-content">
+        <section class="stats-grid">
+          <article class="stat-card">
+            <span class="stat-label">Channel Lifetime Views</span>
+            <strong id="totalViews">—</strong>
+            <span class="stat-foot">Cumulative channel total</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Subscribers</span>
+            <strong id="subscribers">—</strong>
+            <span class="stat-foot">Channel total</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Total Uploaded Videos</span>
+            <strong id="videoCount">—</strong>
+            <span class="stat-foot">Public & unlisted count</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Period Views</span>
+            <strong id="periodViews">—</strong>
+            <span id="periodDates" class="stat-foot">—</span>
+          </article>
+        </section>
 
-      <section class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">TOP CONTENT</p>
-            <h2>วิดีโอที่มีผลงานสูงสุด</h2>
-            <p id="videoDates" class="muted"></p>
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CHANNEL REPORT</p>
+              <h2>Analytics Overview</h2>
+            </div>
+            <label class="select-label" for="days">Reporting Period
+              <select id="days">
+                <option value="7">Last 7 Days</option>
+                <option value="28" selected>Last 28 Days</option>
+                <option value="90">Last 90 Days</option>
+              </select>
+            </label>
           </div>
-          <button id="loadVideos" class="button secondary">Load videos</button>
+          <div class="metric-grid">
+            <div class="metric"><span>Watch Time</span><strong id="watchMinutes">—</strong><small>minutes</small></div>
+            <div class="metric"><span>Likes</span><strong id="likes">—</strong></div>
+            <div class="metric"><span>Comments</span><strong id="comments">—</strong></div>
+            <div class="metric"><span>Shares</span><strong id="shares">—</strong></div>
+            <div class="metric"><span>Subscribers Gained</span><strong id="gained">—</strong></div>
+            <div class="metric"><span>Subscribers Lost</span><strong id="lost">—</strong></div>
+          </div>
+          <p id="analyticsNote" class="tiny muted">YouTube Analytics reports may lag behind live totals by 24-48 hours.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Views</th><th>Watch Mins</th><th>Likes</th><th>Net Subs*</th></tr></thead>
+              <tbody id="dailyRows"><tr><td colspan="5" class="muted">No data available</td></tr></tbody>
+            </table>
+          </div>
+          <p class="tiny muted">*Net Subscribers = Subscribers Gained minus Subscribers Lost in processed period report.</p>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">TOP CONTENT</p>
+              <h2>Top Performing Videos</h2>
+              <p id="videoDates" class="muted"></p>
+            </div>
+            <button id="loadVideos" class="button secondary">Load Videos</button>
+          </div>
+          <div id="videoList" class="video-list">
+            <p class="muted">Loading video statistics...</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- View 2: AI Content Coach View -->
+      <div id="viewCoach" class="tab-content hidden">
+        <div id="aiConfigNotice" class="notice-card hidden">
+          <div class="notice-badge">INFO</div>
+          <div>
+            <strong>AI Provider Notice</strong>
+            <p id="aiConfigText" class="tiny muted">Gemini API key is not configured. Suggestions are generated using grounded data heuristics. Set <code>GEMINI_API_KEY</code> in <code>.env</code> to activate Google Gemini AI.</p>
+          </div>
         </div>
-        <div id="videoList" class="video-list">
-          <p class="muted">กำลังโหลดวิดีโอ...</p>
-        </div>
-      </section>
+
+        <!-- Section A: Health Snapshot & Period Comparison -->
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SECTION A · CHANNEL HEALTH SNAPSHOT</p>
+              <h2>Period Comparison & Growth</h2>
+              <p id="coachPeriodLabel" class="muted">Comparing current period against equivalent previous window.</p>
+            </div>
+            <label class="select-label" for="coachDays">Period
+              <select id="coachDays">
+                <option value="7">7 Days</option>
+                <option value="28" selected>28 Days</option>
+                <option value="90">90 Days</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="comparisonGrid" class="comparison-grid">
+            <div class="loading-placeholder">Loading health snapshot...</div>
+          </div>
+          <p id="coachFreshnessNote" class="tiny muted mt-10"></p>
+        </section>
+
+        <!-- Section B: What Is Working? -->
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SECTION B · PATTERN ANALYSIS</p>
+              <h2>What Is Working?</h2>
+              <p class="muted">Observable trends across your stronger-performing uploads.</p>
+            </div>
+          </div>
+          <div id="patternsContainer" class="patterns-list">
+            <div class="loading-placeholder">Analyzing working patterns...</div>
+          </div>
+          <div class="disclaimer-box tiny muted mt-15">
+            <strong>Note on Correlation vs. Causation:</strong> High views correlate with topics, video age, thumbnail appeal, or external distribution. Do not assume post timing or editing style alone caused higher view count without structured testing.
+          </div>
+        </section>
+
+        <!-- Section C: What Should I Make Next? -->
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SECTION C · CONTENT RECOMMENDATIONS</p>
+              <h2>What Should I Make Next?</h2>
+              <p class="muted">Personalized video concepts grounded in your actual channel data.</p>
+            </div>
+            <button id="generateNewIdeas" class="button primary">✨ Request New Batch</button>
+          </div>
+          <div id="ideasContainer" class="ideas-grid">
+            <div class="loading-placeholder">Generating content ideas...</div>
+          </div>
+        </section>
+
+        <!-- Section D: Improve My Next Video -->
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SECTION D · EXPERIMENTS & OPTIMIZATION</p>
+              <h2>Improve My Next Upload</h2>
+              <p class="muted">Prioritized actionable tests for your upcoming video.</p>
+            </div>
+          </div>
+          <div id="improvementsContainer" class="experiments-list">
+            <div class="loading-placeholder">Preparing improvement recommendations...</div>
+          </div>
+        </section>
+
+        <!-- Section E: Ask the Coach -->
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SECTION E · INTERACTIVE ASSISTANT</p>
+              <h2>Ask the Content Coach</h2>
+              <p class="muted">Ask specific questions about your channel metrics and content direction.</p>
+            </div>
+          </div>
+
+          <div class="quick-questions">
+            <span class="tiny muted font-bold">Suggested questions:</span>
+            <div class="chips-row">
+              <button class="chip-btn" data-q="Which videos performed best in the selected period?">Which videos performed best?</button>
+              <button class="chip-btn" data-q="What topics should I test next?">What topics should I test next?</button>
+              <button class="chip-btn" data-q="What changed compared with the previous period?">What changed compared to prior period?</button>
+              <button class="chip-btn" data-q="What can I learn from my top-performing videos?">Key learnings from top videos?</button>
+            </div>
+          </div>
+
+          <form id="askCoachForm" class="ask-form">
+            <textarea id="coachQuestionInput" rows="3" placeholder="e.g. Why did my views increase this month and what content should I double down on?" required></textarea>
+            <div class="form-actions">
+              <button id="askCoachSubmit" class="button primary" type="submit">Ask Coach</button>
+            </div>
+          </form>
+
+          <div id="askAnswerContainer" class="answer-card hidden">
+            <div class="answer-head">
+              <span class="eyebrow">COACH RESPONSE</span>
+              <span id="answerProviderBadge" class="badge"></span>
+            </div>
+            <div id="askAnswerText" class="answer-body"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- View 3: Saved Ideas -->
+      <div id="viewSaved" class="tab-content hidden">
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SECTION F · SAVED RECOMMENDATIONS</p>
+              <h2>Your Saved Content Ideas</h2>
+              <p class="muted">Review and organize recommended concepts saved during coaching sessions.</p>
+            </div>
+          </div>
+          <div id="savedContainer" class="ideas-grid">
+            <p class="muted">No saved ideas yet. Click "Save Idea" on recommendations to keep them here.</p>
+          </div>
+        </section>
+      </div>
+
     </div>
 
     <div id="globalError" class="error-banner hidden" role="alert"></div>
@@ -122,7 +265,7 @@
 
   <footer>
     <span>Mobile Studio AI</span>
-    <span>Local development · YouTube API</span>
+    <span>Local development · YouTube API & AI Content Coach</span>
   </footer>
   <script src="/app.js" defer></script>
 </body>
