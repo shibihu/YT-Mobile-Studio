@@ -88,6 +88,13 @@ function oauthClient(tokens) {
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
   );
+  if (client.transporter) {
+    client.transporter.defaults = {
+      ...client.transporter.defaults,
+      fetchImplementation: globalThis.fetch,
+      timeout: OAUTH_EXCHANGE_TIMEOUT_MS
+    };
+  }
   if (tokens) client.setCredentials(tokens);
   return client;
 }
@@ -223,6 +230,7 @@ async function getChannelReport(auth, days) {
   for (const metric of ["views", "estimatedMinutesWatched", "likes", "comments", "shares", "subscribersGained", "subscribersLost"]) {
     const idx = headers.indexOf(metric);
     if (idx >= 0) totals[metric] = (response.data.rows ?? []).reduce((sum, row) => sum + Number(row[idx] ?? 0), 0);
+    else totals[metric] = 0;
   }
   return { ...range, headers, rows, totals, note: "YouTube Analytics data can be delayed; recent days may be incomplete." };
 }
@@ -302,9 +310,6 @@ app.get("/auth/callback", async (req, res) => {
   if (typeof code !== "string") return res.status(400).send("Missing OAuth authorization code.");
 
   const client = oauthClient();
-  if (client.transporter) {
-    client.transporter.defaults = { ...client.transporter.defaults, timeout: OAUTH_EXCHANGE_TIMEOUT_MS };
-  }
 
   let tokens;
   try {
