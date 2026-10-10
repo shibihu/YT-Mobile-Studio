@@ -40,13 +40,14 @@ function setMetric(id, value) {
 }
 
 function renderDaily(report) {
-  $("#periodViews").textContent = number(report.totals.views);
-  $("#watchMinutes").textContent = number(report.totals.estimatedMinutesWatched);
-  $("#likes").textContent = number(report.totals.likes);
-  $("#comments").textContent = number(report.totals.comments);
-  $("#shares").textContent = number(report.totals.shares);
-  $("#gained").textContent = number(report.totals.subscribersGained);
-  $("#lost").textContent = number(report.totals.subscribersLost);
+  const totals = report.totals || {};
+  $("#periodViews").textContent = number(totals.views);
+  $("#watchMinutes").textContent = number(totals.estimatedMinutesWatched);
+  $("#likes").textContent = number(totals.likes);
+  $("#comments").textContent = number(totals.comments);
+  $("#shares").textContent = number(totals.shares);
+  $("#gained").textContent = number(totals.subscribersGained);
+  $("#lost").textContent = number(totals.subscribersLost);
   $("#periodDates").textContent = `${report.startDate} – ${report.endDate}`;
   $("#analyticsNote").textContent = report.note || "";
 
