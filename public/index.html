@@ -45,28 +45,29 @@
           <button id="refreshAll" class="button secondary">↻ Refresh data</button>
           <button id="disconnect" class="button danger">Disconnect</button>
         </div>
+        <p id="autoRefreshNote" class="tiny muted"></p>
       </section>
 
       <section class="stats-grid">
         <article class="stat-card">
           <span class="stat-label">ยอดดูทั้งหมดของช่อง</span>
           <strong id="totalViews">—</strong>
-          <span class="stat-foot">สถิติสะสมจาก YouTube</span>
+          <span id="totalViewsFoot" class="stat-foot">สถิติสะสมจาก YouTube Data API · ไม่ใช่ยอดเฉพาะช่วง</span>
         </article>
         <article class="stat-card">
           <span class="stat-label">ผู้ติดตาม</span>
           <strong id="subscribers">—</strong>
-          <span class="stat-foot">อาจถูกซ่อนโดยเจ้าของช่อง</span>
+          <span id="subscribersFoot" class="stat-foot">สถิติสะสม · อาจถูกซ่อนโดยเจ้าของช่อง</span>
         </article>
         <article class="stat-card">
           <span class="stat-label">วิดีโอทั้งหมด</span>
           <strong id="videoCount">—</strong>
-          <span class="stat-foot">ข้อมูลช่อง</span>
+          <span id="videoCountFoot" class="stat-foot">ข้อมูลช่องสะสม (YouTube Data API)</span>
         </article>
         <article class="stat-card">
           <span class="stat-label">ยอดดูในช่วงที่เลือก</span>
           <strong id="periodViews">—</strong>
-          <span id="periodDates" class="stat-foot">—</span>
+          <span id="periodDates" class="stat-foot">จาก YouTube Analytics · ข้อมูลอาจล่าช้า ~2 วัน</span>
         </article>
       </section>
 
@@ -92,14 +93,15 @@
           <div class="metric"><span>ผู้ติดตามที่ได้</span><strong id="gained">—</strong></div>
           <div class="metric"><span>ผู้ติดตามที่เสีย</span><strong id="lost">—</strong></div>
         </div>
-        <p id="analyticsNote" class="tiny muted">ข้อมูล Analytics อาจล่าช้ากว่าวันปัจจุบัน</p>
+        <p id="dailyUpdated" class="tiny muted"></p>
+        <p id="analyticsNote" class="tiny muted">ข้อมูล Analytics อาจล่าช้ากว่าวันปัจจุบันประมาณ 2 วัน และ API ไม่ส่งแถวสำหรับวันที่ไม่มีกิจกรรม (ไม่ใช่ค่า 0)</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>วันที่</th><th>ยอดดู</th><th>นาทีรับชม</th><th>ถูกใจ</th><th>ผู้ติดตามสุทธิ*</th></tr></thead>
             <tbody id="dailyRows"><tr><td colspan="5" class="muted">ยังไม่มีข้อมูล</td></tr></tbody>
           </table>
         </div>
-        <p class="tiny muted">*คำนวณจากผู้ติดตามที่ได้ลบผู้ติดตามที่เสีย โดยใช้ข้อมูลที่ API ส่งกลับ</p>
+        <p class="tiny muted">*คำนวณจากผู้ติดตามที่ได้ลบผู้ติดตามที่เสีย โดยใช้ข้อมูลที่ API ส่งกลับ — ตัวเลขทั้งหมดในส่วนนี้มาจาก YouTube Analytics สำหรับช่วงวันที่เลือกเท่านั้น</p>
       </section>
 
       <section class="panel">
@@ -111,6 +113,8 @@
           </div>
           <button id="loadVideos" class="button secondary">Load videos</button>
         </div>
+        <p id="videoNote" class="tiny muted">เมตริกต่อวิดีโอ (ยอดดู นาทีรับชม ถูกใจ ฯลฯ) เป็นค่าเฉพาะช่วงเวลาที่เลือกจาก YouTube Analytics · ยอดดูทั้งหมดต่อวิดีโอเป็นสถิติสะสมจาก YouTube Data API และแสดงแยกต่างหาก</p>
+        <p id="videosUpdated" class="tiny muted"></p>
         <div id="videoList" class="video-list">
           <p class="muted">กำลังโหลดวิดีโอ...</p>
         </div>

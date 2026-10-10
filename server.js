@@ -5,11 +5,27 @@ import { google } from "googleapis";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  ANALYTICS_END_LAG_DAYS,
+  DAILY_METRICS,
+  VIDEO_METRICS,
+  dateRange,
+  normalizeReportRows,
+  sumMetricTotals
+} from "./lib/metrics.js";
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const HOST = "127.0.0.1";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Client auto-refresh interval in seconds. Clamped so a bad value cannot
+// cause excessive YouTube API polling (quota burn).
+const AUTO_REFRESH_SECONDS = (() => {
+  const raw = Number.parseInt(process.env.AUTO_REFRESH_SECONDS ?? "", 10);
+  if (!Number.isFinite(raw)) return 60;
+  return Math.min(3600, Math.max(30, raw));
+})();
 
 const required = [
   "SESSION_SECRET",
@@ -55,6 +71,11 @@ app.use(express.static(path.join(__dirname, "public"), {
   setHeaders(res, filePath) {
     if (filePath.endsWith("service-worker.js")) {
       res.setHeader("Cache-Control", "no-cache");
+      return;
+    }
+    // Keep the app shell fresh; the service worker also refreshes these.
+    if (/\.(?:html|js|css|webmanifest)$/.test(filePath)) {
+      res.setHeader("Cache-Control", "no-cache");
     }
   }
 }));
@@ -81,6 +102,15 @@ function requireSameOrigin(req, res, next) {
   next();
 }
 app.use("/api", requireSameOrigin);
+app.use("/api", (req, res, next) => {
+  // Analytics responses must never be served stale by browsers or proxies.
+  res.setHeader("Cache-Control", "no-store");
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    console.log(`[api] ${req.method} ${req.path} -> ${res.statusCode} (${Date.now() - startedAt}ms)`);
+  });
+  next();
+});
 
 function oauthClient(tokens) {
   const client = new google.auth.OAuth2(
@@ -153,6 +183,30 @@ function oauthExchangeFailure(err) {
   return [502, "Could not reach Google's sign-in service to finish signing in. Check your connection and the server log, then try again."];
 }
 
+// Logs API failures without access tokens, refresh tokens, client secrets,
+// request headers, or account identifiers. Never log the raw error object:
+// googleapis errors carry an Authorization header inside err.config.
+function logApiError(context, err) {
+  const googleError = err?.response?.data?.error;
+  const safeGoogleError = (googleError && typeof googleError === "object")
+    ? {
+        code: googleError.code,
+        message: String(googleError.message ?? "").slice(0, 300),
+        errors: (googleError.errors ?? []).slice(0, 5).map((entry) => ({
+          domain: entry?.domain,
+          reason: entry?.reason,
+          message: String(entry?.message ?? "").slice(0, 200)
+        }))
+      }
+    : undefined;
+  console.error(`[api] ${context} failed:`, JSON.stringify({
+    name: err?.name,
+    message: String(err?.message ?? "").slice(0, 300),
+    status: err?.response?.status ?? err?.status,
+    googleError: safeGoogleError
+  }));
+}
+
 function getAuth(req) {
   if (!req.session.tokens?.access_token) {
     const error = new Error("Connect your YouTube account first.");
@@ -167,17 +221,6 @@ function getAuth(req) {
     }
   });
   return client;
-}
-
-function dateRange(daysInput) {
-  const days = Math.min(90, Math.max(7, Number.parseInt(daysInput, 10) || 28));
-  // Analytics data can be delayed. End two days ago to reduce incomplete-day results.
-  const end = new Date();
-  end.setUTCDate(end.getUTCDate() - 2);
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - days + 1);
-  const fmt = (d) => d.toISOString().slice(0, 10);
-  return { startDate: fmt(start), endDate: fmt(end), days };
 }
 
 function publicError(err) {
@@ -204,6 +247,7 @@ async function getChannel(auth) {
     description: channel.snippet?.description ?? "",
     thumbnail: channel.snippet?.thumbnails?.medium?.url ??
       channel.snippet?.thumbnails?.default?.url ?? null,
+    subscribersHidden: Boolean(channel.statistics?.hiddenSubscriberCount),
     subscribers: channel.statistics?.hiddenSubscriberCount
       ? null : (channel.statistics?.subscriberCount ?? null),
     totalViews: channel.statistics?.viewCount ?? null,
@@ -220,19 +264,18 @@ async function getChannelReport(auth, days) {
     endDate: range.endDate,
     dimensions: "day",
     sort: "day",
-    metrics: "views,estimatedMinutesWatched,likes,comments,shares,subscribersGained,subscribersLost"
+    metrics: DAILY_METRICS.join(",")
   });
-  const headers = (response.data.columnHeaders ?? []).map(h => h.name);
-  const rows = (response.data.rows ?? []).map(row =>
-    Object.fromEntries(headers.map((name, i) => [name, row[i]]))
-  );
-  const totals = {};
-  for (const metric of ["views", "estimatedMinutesWatched", "likes", "comments", "shares", "subscribersGained", "subscribersLost"]) {
-    const idx = headers.indexOf(metric);
-    if (idx >= 0) totals[metric] = (response.data.rows ?? []).reduce((sum, row) => sum + Number(row[idx] ?? 0), 0);
-    else totals[metric] = 0;
-  }
-  return { ...range, headers, rows, totals, note: "YouTube Analytics data can be delayed; recent days may be incomplete." };
+  const { headers, rows } = normalizeReportRows(response.data.columnHeaders, response.data.rows);
+  // Metrics the API did not return stay null (shown as "unavailable"), never 0.
+  const totals = sumMetricTotals(rows, DAILY_METRICS);
+  return {
+    ...range,
+    headers,
+    rows,
+    totals,
+    note: `YouTube Analytics data can lag by a few days; this report ends on ${range.endDate} (${ANALYTICS_END_LAG_DAYS} day(s) before today). Days without activity are omitted by the API.`
+  };
 }
 
 async function getVideoReport(auth, days) {
@@ -245,14 +288,11 @@ async function getVideoReport(auth, days) {
     dimensions: "video",
     sort: "-views",
     maxResults: 25,
-    metrics: "views,estimatedMinutesWatched,likes,comments,shares,subscribersGained"
+    metrics: VIDEO_METRICS.join(",")
   });
-  const headers = (response.data.columnHeaders ?? []).map(h => h.name);
-  const rows = (response.data.rows ?? []).map(row =>
-    Object.fromEntries(headers.map((name, i) => [name, row[i]]))
-  );
+  const { headers, rows } = normalizeReportRows(response.data.columnHeaders, response.data.rows);
   const ids = rows.map(row => row.video).filter(Boolean);
-  let metadata = {};
+  const metadata = {};
   if (ids.length) {
     const yt = google.youtube({ version: "v3", auth });
     // videos.list accepts up to 50 IDs in one request.
@@ -266,14 +306,25 @@ async function getVideoReport(auth, days) {
         thumbnail: video.snippet?.thumbnails?.medium?.url ??
           video.snippet?.thumbnails?.default?.url ?? null,
         publishedAt: video.snippet?.publishedAt ?? null,
-        url: `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`
+        url: `https://www.youtube.com/watch?v=${encodeURIComponent(video.id)}`,
+        // All-time views from the Data API, kept separate from period views.
+        lifetimeViews: video.statistics?.viewCount ?? null
       };
     }
   }
   return {
     ...range,
     headers,
-    rows: rows.map(row => ({ ...row, ...(metadata[row.video] ?? { title: row.video, thumbnail: null, url: null }) }))
+    note: "Per-video metrics cover the selected reporting period only. Lifetime views come from the YouTube Data API and may differ from Analytics.",
+    rows: rows.map(row => ({
+      ...row,
+      ...(metadata[row.video] ?? {
+        title: row.video,
+        thumbnail: null,
+        url: null,
+        lifetimeViews: null
+      })
+    }))
   };
 }
 
@@ -343,10 +394,9 @@ app.get("/api/me", async (req, res) => {
   try {
     const auth = getAuth(req);
     const channel = await getChannel(auth);
-    res.json({ connected: true, channel });
+    res.json({ connected: true, channel, updatedAt: new Date().toISOString() });
   } catch (err) {
-    if (err?.response) console.error("Channel API error:", err.response.data ?? err.message);
-    else console.error("Channel error:", err.message);
+    logApiError("Channel API", err);
     const [status, message] = publicError(err);
     res.status(status).json({ error: message });
   }
@@ -359,10 +409,9 @@ app.get("/api/analytics", async (req, res) => {
       getChannel(auth),
       getChannelReport(auth, req.query.days)
     ]);
-    res.json({ channel, report });
+    res.json({ channel, report, updatedAt: new Date().toISOString() });
   } catch (err) {
-    if (err?.response) console.error("Analytics API error:", err.response.data ?? err.message);
-    else console.error("Analytics error:", err.message);
+    logApiError("Analytics API", err);
     const [status, message] = publicError(err);
     res.status(status).json({ error: message });
   }
@@ -371,14 +420,12 @@ app.get("/api/analytics", async (req, res) => {
 app.get("/api/videos", async (req, res) => {
   try {
     const auth = getAuth(req);
-    const [channel, report] = await Promise.all([
-      getChannel(auth),
-      getVideoReport(auth, req.query.days)
-    ]);
-    res.json({ channel, report });
+    // Channel stats are already provided by /api/analytics; fetching them here
+    // again would burn extra Data API quota and risk inconsistent snapshots.
+    const report = await getVideoReport(auth, req.query.days);
+    res.json({ report, updatedAt: new Date().toISOString() });
   } catch (err) {
-    if (err?.response) console.error("Video API error:", err.response.data ?? err.message);
-    else console.error("Video report error:", err.message);
+    logApiError("Video report API", err);
     const [status, message] = publicError(err);
     res.status(status).json({ error: message });
   }
@@ -405,7 +452,9 @@ app.post("/auth/logout", async (req, res) => {
   });
 });
 
-app.get("/api/health", (_req, res) => res.json({ ok: true }));
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true, autoRefreshSeconds: AUTO_REFRESH_SECONDS });
+});
 
 app.listen(PORT, HOST, () => {
   console.log(`Mobile Studio AI running at http://localhost:${PORT}`);

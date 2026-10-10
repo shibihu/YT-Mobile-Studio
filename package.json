@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/app.js && node --check public/service-worker.js",
+    "check": "node --check server.js && node --check lib/metrics.js && node --check public/app.js && node --check public/service-worker.js",
     "test": "node --test"
   },
   "dependencies": {

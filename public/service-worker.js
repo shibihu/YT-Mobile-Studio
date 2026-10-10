@@ -1,4 +1,4 @@
-const CACHE_NAME = "mobile-studio-ai-static-v1";
+const CACHE_NAME = "mobile-studio-ai-static-v2";
 const ASSETS = ["/", "/style.css", "/app.js", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", event => {
@@ -21,14 +21,18 @@ self.addEventListener("fetch", event => {
       url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/")) return;
 
   if (ASSETS.includes(url.pathname)) {
+    // Network-first so updated HTML/JS/CSS are picked up promptly; the cache
+    // is only a fallback when the network is unreachable.
     event.respondWith(
-      caches.match(req).then(cached => cached || fetch(req).then(response => {
+      fetch(req).then(response => {
         if (response.ok) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
         }
         return response;
-      }))
+      }).catch(() =>
+        caches.match(req).then(cached => cached || new Response("Offline", { status: 503 }))
+      )
     );
   }
 });
